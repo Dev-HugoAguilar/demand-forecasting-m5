@@ -1,0 +1,7 @@
+# Dependencias del pipeline de pronóstico M5.
+# Requiere Linux o macOS: el paquete `comercial` usa `resource` para medir memoria.
+lightgbm>=4.5
+numpy>=2.0
+pandas>=2.2
+pymongo>=4.10
+pydantic-settings>=2.0

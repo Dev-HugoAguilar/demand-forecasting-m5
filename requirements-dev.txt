@@ -1,0 +1,4 @@
+# Dependencias de la suite de contratos estáticos.
+# Las pruebas no importan el paquete `comercial` (depende de MongoDB y de
+# `resource`, que no existe en Windows): analizan el código con `ast`.
+pytest==8.4.2
