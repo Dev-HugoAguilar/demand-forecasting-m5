@@ -1,3 +1,6 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# El paquete de dominio vive en `lib/` y se instala con `pip install -e lib`.
+# Esta entrada permite ejecutar las pruebas desde la raíz sin instalar antes.
+pythonpath = ["lib"]

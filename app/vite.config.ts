@@ -1,42 +1,32 @@
-import { createRequire } from 'node:module';
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-/*
- * `src/ui/Segmentado.tsx` reexporta el componente del Atlas vial, que vive fuera
- * de esta carpeta. Para que no entren dos copias de React en el mismo bundle (y
- * el dispatcher de hooks quede nulo) se fija una única resolución de React y
- * react-dom a las dependencias de este proyecto.
- */
-const requerir = createRequire(import.meta.url);
-const unaSolaCopia = (paquete: string) => requerir.resolve(paquete);
-
 /**
- * El tablero se compila a UN módulo ESM con `mount`/`unmount` más su hoja de
- * estilos dentro de `dist/dashboards/atlas-comercial/`, igual que el Atlas vial.
- * `dist/projects/atlas-comercial.js` lo carga con `import()` dinámico.
+ * Dos artefactos del mismo proyecto con una sola configuración:
  *
- * `src/ui/Segmentado.tsx` reexporta el selector segmentado del Atlas vial: es el
- * mismo componente, no una copia, así que su aspecto y su cápsula son idénticos.
+ * - `npm run dev` sirve `index.html` + `src/main.tsx`: un host de desarrollo real
+ *   que monta la aplicación en el navegador. Requiere la API del portafolio en
+ *   `http://127.0.0.1:8010/api/v1/comercial/m5` (o `window.PORTFOLIO_COMERCIAL_API`).
+ * - `npm run build` compila la librería ESM `dist/app.js` (+ `dist/app.css`) con
+ *   `mount`/`unmount` para que el portafolio la cargue con `import()` dinámico.
+ *
+ * Todo se escribe dentro de `app/`: el artefacto queda en `app/dist` y nada se
+ * publica fuera del repositorio. `src/ui/Segmentado.tsx` es una copia local del
+ * selector segmentado, así que el bundle no sale de esta carpeta.
  */
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  define: {
-    'process.env.NODE_ENV': JSON.stringify('production'),
-  },
+  // En modo librería Vite no reemplaza NODE_ENV; sin esto se empaquetaría React
+  // en su build de desarrollo. Solo aplica al artefacto: el host de desarrollo
+  // conserva las comprobaciones de React.
+  ...(command === 'build'
+    ? { define: { 'process.env.NODE_ENV': JSON.stringify('production') } }
+    : {}),
   resolve: {
     dedupe: ['react', 'react-dom', 'react/jsx-runtime'],
-    alias: [
-      { find: /^react$/, replacement: unaSolaCopia('react') },
-      { find: /^react\/jsx-runtime$/, replacement: unaSolaCopia('react/jsx-runtime') },
-      { find: /^react-dom$/, replacement: unaSolaCopia('react-dom') },
-      { find: /^react-dom\/client$/, replacement: unaSolaCopia('react-dom/client') },
-    ],
   },
-  server: { fs: { allow: ['..'] } },
   build: {
-    outDir: '../../dist/dashboards/atlas-comercial',
+    outDir: 'dist',
     emptyOutDir: true,
     target: 'es2020',
     minify: 'esbuild',
@@ -55,4 +45,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

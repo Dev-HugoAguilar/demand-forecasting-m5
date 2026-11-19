@@ -39,6 +39,7 @@ evaluación final— y backtesting en ventanas completas de 28 días.
 git clone https://github.com/Dev-HugoAguilar/demand-forecasting-m5.git
 cd demand-forecasting-m5
 python -m pip install -r requirements.txt
+python -m pip install -e lib                 # paquete app.comercial / app.config / app.db.mongo
 
 python pipeline/importar_m5.py         # CSV de M5 → MongoDB
 python pipeline/entrenar_m5.py --variantes   # cortes de desarrollo
@@ -46,6 +47,14 @@ python pipeline/entrenar_m5.py         # modelo final en cortes reservados
 python pipeline/pronosticar_m5.py      # 28 días por serie
 python pipeline/agregar_m5.py          # agregados para la interfaz
 ```
+
+`python -m pip install -e lib` instala el paquete de dominio (`lib/pyproject.toml`)
+en el entorno activo, de modo que las etapas de `pipeline/` importan
+`app.comercial`, `app.config` y `app.db.mongo` sin depender del directorio de
+trabajo ni de `PYTHONPATH`. El `pyproject.toml` de la raíz añade `lib` a
+`pythonpath` para que `python -m pytest` funcione aunque no se haya instalado.
+Solo se declaran `pydantic-settings` y `pymongo`: el resto del pipeline
+(`numpy`, `pandas`, `lightgbm`) se instala con `requirements.txt`.
 
 ![Pantalla de modelado](docs/cover.jpg)
 
@@ -78,28 +87,54 @@ Detalle completo en [`docs/METODOLOGIA.md`](docs/METODOLOGIA.md).
 
 ```text
 pipeline/                 Etapas ejecutables del pronóstico
+lib/pyproject.toml        Paquete instalable del dominio (`pip install -e lib`)
 lib/app/comercial/        Paquete de modelado (mismo espacio de nombres del backend)
-app/                      Interfaz React + TypeScript (capa de visualización)
+lib/app/config.py         Configuración con rutas al clon y datos bajo `data/`
+lib/app/db/mongo.py       Conexión, colecciones M5 y reintentos de lectura
+app/index.html            Host de desarrollo (`npm run dev`)
+app/src/main.tsx          Monta la aplicación completa en el navegador
+app/src/mount.tsx         Entrada de la librería `mount`/`unmount` del build
+app/dist/                 Artefacto del build (`app.js` + `app.css`), ignorado por Git
 tests/test_pipeline.py    Contratos estáticos del método
+tests/test_comercial.py   Prueba real de `app.comercial.fuentes` (sin entrenar)
 docs/                     Metodología, datos y arquitectura
 ```
 
 La interfaz **no** calcula el modelo: consume la API del portafolio
-(`portfolio-api`). Se incluye como fuente para no perder la capa de visualización;
-requiere `npm ci` y la API en ejecución. El corazón de este repositorio es el
-pipeline.
+(`portfolio-api`). El corazón de este repositorio es el pipeline.
+
+```bash
+cd app
+npm ci
+npm run dev      # host de desarrollo: index.html + src/main.tsx
+npm run build    # librería ESM en app/dist (app.js + app.css), dentro del repo
+```
+
+`app/src/ui/Segmentado.tsx` es el selector segmentado vendorizado: ya no se
+importa desde el Atlas vial ni se escribe en `../../dist`. El build de librería
+(`src/mount.tsx`) sigue produciendo `mount`/`unmount` para el portafolio, y el
+host de desarrollo (`src/main.tsx`) monta la misma aplicación para revisarla en el
+navegador contra la API.
 
 ## Pruebas
 
 ```bash
 python -m pip install -r requirements-dev.txt
+python -m pip install -e lib
 python -m pytest
 ```
 
-Ocho pruebas de contrato estático, sin importar el paquete `comercial` (depende de
-MongoDB y de `resource`): horizonte de 28 días, herencia del horizonte en el
-modelo, existencia y compilación de las cuatro etapas, declaración del protocolo
-de variantes y ausencia de rutas absolutas.
+Ocho pruebas de contrato estático, sin importar el paquete `comercial` (analizan
+el código con `ast`): horizonte de 28 días, herencia del horizonte en el modelo,
+existencia y compilación de las cuatro etapas, declaración del protocolo de
+variantes y ausencia de rutas absolutas.
+
+`tests/test_comercial.py` añade **ocho pruebas reales** sobre `app.comercial.fuentes`,
+el módulo puro que declara archivos, columnas y aritmética de días: cobertura leída
+de la cabecera `d_N`, rechazo de cabeceras inválidas, idempotencia de la versión,
+semanas de lunes a domingo, conversión `d_N` ↔ fecha real, SHA-256 del manifiesto y
+archivos esperados. **No es un entrenamiento ni una ejecución del pipeline**: no
+lee los CSV de M5, no usa MongoDB y no importa LightGBM.
 
 ## Datos y atribución
 
