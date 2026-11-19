@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "m5-comercial"
+version = "1.0.0"
+description = "Paquete de modelado del pipeline M5: fuentes, esquema, ingesta, baseline, derivados y acceso a MongoDB."
+requires-python = ">=3.11"
+#: Mínimo para importar app.config y app.db.mongo. El pipeline completo
+#: (numpy, pandas, lightgbm) se instala con requirements.txt.
+dependencies = ["pydantic-settings>=2.0,<3", "pymongo>=4.10"]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["app", "app.comercial", "app.db"]
